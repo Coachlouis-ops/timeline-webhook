@@ -1,22 +1,34 @@
-import express from "express";
-
-const app = express();
-
-/**
- * MUST be first — Railway hits /
- */
-app.get("/", (req, res) => {
-  res.status(200).send("OK");
-});
-
-app.use(express.json());
-
 app.post("/api/lead-webhook", (req, res) => {
-  console.log("Timeline webhook received:", JSON.stringify(req.body));
-  res.status(200).send("OK");
-});
+  // Respond immediately (TimelinesAI requires fast 200)
+  res.sendStatus(200);
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, "0.0.0.0", () => {
-  console.log("Server running on port", PORT);
+  try {
+    const payload = req.body;
+
+    // Validate event
+    if (payload?.event !== "message:received:new") {
+      return; // Ignore non-message events
+    }
+
+    const message = payload.message || {};
+    const chat = payload.chat || {};
+
+    const lead = {
+      phone: chat.phone || null,
+      name: chat.name || null,
+      messageType: message.type || null,
+      text: message.text || null,
+      receivedAt: new Date().toISOString(),
+      raw: payload // keep full payload for now
+    };
+
+    console.log("NEW WHATSAPP LEAD:", JSON.stringify(lead, null, 2));
+
+    // NEXT (not yet):
+    // - Save to DB
+    // - Push to ERP
+    // - Auto-reply
+  } catch (err) {
+    console.error("Webhook parse error:", err);
+  }
 });
